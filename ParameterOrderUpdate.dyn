@@ -1,0 +1,376 @@
+{
+  "Uuid": "52032cd9-a69a-42b8-bcab-7216d81a06a0",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "ParameterOrderUpdate",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "DSRevitNodesUI.FamilyTypes, DSRevitNodesUI",
+      "SelectedIndex": 50,
+      "SelectedString": "M_Concrete-Rectangular-Column:450 x 600mm",
+      "NodeType": "ExtensionNode",
+      "Id": "3171444bb7b245c9b4f406502573e16b",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "3ee6c2f725ab480e9992bced0ec445a8",
+          "Name": "Family Type",
+          "Description": "The selected Family Type",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "All family types available in the document."
+    },
+    {
+      "ConcreteType": "DSRevitNodesUI.ElementsOfFamilyType, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "Id": "2294d0d6d6164d28939934315deef8fe",
+      "Inputs": [
+        {
+          "Id": "ee3488adb02f4a40bc4f934f68ea249e",
+          "Name": "Family Type",
+          "Description": "The Family Type.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "aba34d46f0644012a5bc9d71e4d4dec5",
+          "Name": "Elements",
+          "Description": "The list of elements matching the query.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Get all elements of the specified family type from the model."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\n\r\ndef stringToASCII(string) :\r\n    \r\n    value = 0\r\n    \r\n    for char in string : value += ord(char)\r\n    \r\n    return value\r\n    \r\ndef getSplitValue(string, delimiter) :\r\n    \r\n    valueList = string.split(delimiter)\r\n    valueString = \"\"\r\n    \r\n    for number in valueList : valueString += number\r\n    if (valueString, int) : return int(valueString)\r\n\r\nelements      = IN[0]\r\nparameterName = IN[1]\r\n\r\ndelimiter     = IN[2]\r\nnumber        = IN[3]\r\n\r\nvalueToCheck  = stringToASCII(delimiter + str(number))\r\n\r\noperand       = IN[4]\r\n\r\nOUT = []\r\n\r\nfor element in elements :\r\n    \r\n    parameterValue = element.GetParameterValueByName(parameterName)\r\n    \r\n    parameterValueAsASCII = stringToASCII(parameterValue)\r\n    \r\n    if (parameterValueAsASCII > valueToCheck) : \r\n        \r\n        intValue = getSplitValue(parameterValue, delimiter)\r\n        \r\n        if (intValue) : intValue += operand\r\n        \r\n        else : continue\r\n        \r\n        updatedParameterValue = delimiter + str(intValue)\r\n        \r\n        updatedElement = element.SetParameterByName(parameterName, updatedParameterValue)\r\n        \r\n        OUT.append(element)",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "6700d5be1c374ae7a5221217ed322bfc",
+      "Inputs": [
+        {
+          "Id": "d5abf9da2bd14b35b61d246490450140",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "32b5d1970d484ae4a3667c5e4499cd69",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "db556a8913a74f30b8857563881f6c3e",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "643de96b91354056834476d4be1e6e0a",
+          "Name": "IN[3]",
+          "Description": "Input #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "464e2bc14b2a4db8824c95ec67bf83a1",
+          "Name": "IN[4]",
+          "Description": "Input #4",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "86827f1da9ef4c279a2633cdc5721e45",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "Comments",
+      "Id": "f98e947dacaf41afba9015a3b9b7f59e",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "745d52293a2b47a69332ad56c7051a5b",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "P",
+      "Id": "b47ce7d9440047abbd57dde1cbda44e0",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "8f2e0c3b0d2a4a0ba4fd88ccedc7f4cf",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "InputValue": 7.0,
+      "Id": "f2fa60084d7c4fb2b3c0071cffea6687",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "38f147bfc1af419aa6bbff63f598121f",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a number."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "InputValue": -5.0,
+      "Id": "0a48b534a0cd4b75a155ea704898f035",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "db16c8afa7904270bf43b67b3f8b987f",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a number."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "3ee6c2f725ab480e9992bced0ec445a8",
+      "End": "ee3488adb02f4a40bc4f934f68ea249e",
+      "Id": "5d7e0c2dc3774bd58789b3fb8201f6bd",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "aba34d46f0644012a5bc9d71e4d4dec5",
+      "End": "d5abf9da2bd14b35b61d246490450140",
+      "Id": "4afd088003204f8caa9bfaca1d87e542",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "745d52293a2b47a69332ad56c7051a5b",
+      "End": "32b5d1970d484ae4a3667c5e4499cd69",
+      "Id": "97a4673fb6f7436c8293704259e8752f",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "8f2e0c3b0d2a4a0ba4fd88ccedc7f4cf",
+      "End": "db556a8913a74f30b8857563881f6c3e",
+      "Id": "8d4995fc74aa4bb8a28caafc032e28a5",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "38f147bfc1af419aa6bbff63f598121f",
+      "End": "643de96b91354056834476d4be1e6e0a",
+      "Id": "7fe621c3f5674517bd086aa8aa4f2081",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "db16c8afa7904270bf43b67b3f8b987f",
+      "End": "464e2bc14b2a4db8824c95ec67bf83a1",
+      "Id": "cd658b0c05214786b3360c7893dcf121",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "2.13",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "2.0",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Family Types",
+        "ShowGeometry": true,
+        "Id": "3171444bb7b245c9b4f406502573e16b",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 302.0,
+        "Y": 248.39999999999998
+      },
+      {
+        "Name": "All Elements of Family Type",
+        "ShowGeometry": true,
+        "Id": "2294d0d6d6164d28939934315deef8fe",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 945.54349349092558,
+        "Y": 248.0552378541023
+      },
+      {
+        "Name": "Python Script",
+        "ShowGeometry": true,
+        "Id": "6700d5be1c374ae7a5221217ed322bfc",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1542.4186985959129,
+        "Y": 245.39583423359045
+      },
+      {
+        "Name": "Parameter Name",
+        "ShowGeometry": true,
+        "Id": "f98e947dacaf41afba9015a3b9b7f59e",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 308.37920634661128,
+        "Y": 387.49569245048173
+      },
+      {
+        "Name": "Delimiter",
+        "ShowGeometry": true,
+        "Id": "b47ce7d9440047abbd57dde1cbda44e0",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 311.98575315642182,
+        "Y": 529.89928008738389
+      },
+      {
+        "Name": "Number",
+        "ShowGeometry": true,
+        "Id": "f2fa60084d7c4fb2b3c0071cffea6687",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 313.63173646889618,
+        "Y": 668.987007103153
+      },
+      {
+        "Name": "Operand",
+        "ShowGeometry": true,
+        "Id": "0a48b534a0cd4b75a155ea704898f035",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 314.10961918292884,
+        "Y": 812.67696539641747
+      }
+    ],
+    "Annotations": [],
+    "X": 108.40551609610498,
+    "Y": 36.254621071047609,
+    "Zoom": 0.45972251449067625
+  }
+}
