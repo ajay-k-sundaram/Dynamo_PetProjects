@@ -1,0 +1,101 @@
+{
+  "Uuid": "244df220-32af-42be-bceb-d4c69ab2ecea",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "WallOpps_DataSerialization",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import json\r\nimport clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\nclass WallData :\r\n\r\n    def __init__(self, thickness, start, end, height) :\r\n\r\n        self.thickness = str(thickness)\r\n        self.startPoint = {\"X\" : str(start.X), \"Y\" : str(start.Y), \"Z\" : str(start.Z)}\r\n        self.endPoint = {\"X\" : str(end.X), \"Y\" : str(end.Y), \"Z\" : str(end.Z)}\r\n        self.height = str(height)\r\n    \r\n    def toDict(self) :\r\n        \r\n        return {\"Thickness\" : self.thickness, \"Start\" : self.startPoint, \"End\" : self.endPoint, \"Height\" : self.height}\r\n\r\ndef getLocationData(location) :\r\n\r\n    data = []\r\n\r\n    if hasattr(location, 'Curve') :\r\n                \r\n        curve = location.Curve\r\n                \r\n        if isinstance(curve, Line) :\r\n\r\n            startXYZ = curve.GetEndPoint(0)\r\n            endXYZ   = curve.GetEndPoint(1)\r\n\r\n            # startPoint = [startXYZ.X, startXYZ.Y, startXYZ.Z]\r\n            # endPoint   = [endXYZ.X, startXYZ.Y, startXYZ.Z]\r\n\r\n            return startXYZ, endXYZ\r\n        \r\n            # data.append(endPoint)\r\n    \r\n    return None, None\r\n\r\ndef getUnconnectedHeight(wall) :\r\n\r\n    parameter = wall.LookupParameter(\"Unconnected Height\")\r\n    return parameter.AsDouble()\r\n\r\ndef getTotalThickness(wall, document) :\r\n\r\n    wallType = document.GetElement(wall.GetTypeId())\r\n    compoundStructure = wallType.GetCompoundStructure()\r\n    totalThickness = compoundStructure.GetWidth()\r\n    return totalThickness\r\n\r\ndef getSerializingData(wallsList, document) :\r\n    \r\n    data = []\r\n    \r\n    TransactionManager.Instance.EnsureInTransaction(document)\r\n    \r\n    for iterator in range(len(wallsList)) :\r\n        \r\n        # try :\r\n        \r\n        wall = wallsList[iterator]\r\n\r\n        totalThickness = getTotalThickness(wall, document)\r\n\r\n        unconnectedHeight = getUnconnectedHeight(wall)\r\n\r\n        location       = wall.Location\r\n\r\n        startXYZ, endXYZ = getLocationData(location)\r\n\r\n        wallData = WallData(totalThickness, startXYZ, endXYZ, unconnectedHeight)\r\n\r\n        data.append(wallData.toDict())\r\n                \r\n        # except : pass\r\n        \r\n    TransactionManager.Instance.TransactionTaskDone()\r\n    \r\n    return data\r\n\r\ndocument = DocumentManager.Instance.CurrentDBDocument\r\n\r\nwalls = FilteredElementCollector(document).OfClass(Wall).WhereElementIsNotElementType().ToElements()\r\n\r\nwallsList = list(walls)\r\n\r\ndata = getSerializingData(wallsList, document)\r\n\r\nfile_path = \"C:\\\\Users\\\\Public\\\\Documents\\\\WallData.json\"\r\n\r\nwith open(file_path, 'w') as file:\r\n    json.dump(data, file, indent=4)\r\n\r\nOUT = \"Success\"",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "421c35a40b104ce0afba3757047b0fb2",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "3b6d30dee4b24333b40e9ea9cd97d5bd",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    }
+  ],
+  "Connectors": [],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "2.13",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "2.0",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Serialization",
+        "ShowGeometry": true,
+        "Id": "421c35a40b104ce0afba3757047b0fb2",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 977.71213474686886,
+        "Y": -698.64029029317976
+      }
+    ],
+    "Annotations": [],
+    "X": -488.03464760201791,
+    "Y": 903.26637445336769,
+    "Zoom": 0.96781929862920779
+  }
+}

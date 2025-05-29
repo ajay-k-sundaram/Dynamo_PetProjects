@@ -1,0 +1,293 @@
+{
+  "Uuid": "244df220-32af-42be-bceb-d4c69ab2ecea",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "WallOpps",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndocument = DocumentManager.Instance.CurrentDBDocument\r\n\r\n# walls = FilteredElementCollector(document, document.ActiveView.Id)\r\n# walls.OfClass(Wall).ToElements()\r\n\r\nwallsList = UnwrapElement(IN[0])\r\n\r\n# wallsList = list(walls)\r\n\r\nTransactionManager.Instance.EnsureInTransaction(document)\r\n\r\nfor iterator in range(len(wallsList)) :\r\n    \r\n    try :\r\n    \r\n        wall = wallsList[iterator]\r\n        boundingBox = wall.get_BoundingBox(document.ActiveView)\r\n        outline = Outline(boundingBox.Min, boundingBox.Max)\r\n        \r\n        bbFilter = BoundingBoxIntersectsFilter(outline)\r\n        walls.WherePasses(bbFilter)\r\n        \r\n        for walln in walls : JoinGeometryUtils.JoinGeometry(document, wall, walln)\r\n    \r\n    except : pass\r\n    \r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\nOUT = walls",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "ac949aaaa61c4caeac2591ddec3f9f99",
+      "Inputs": [
+        {
+          "Id": "a60df231c55248f984375b8a7d5ab082",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "db30710626544a319ca22f7efbb565c9",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndocument = DocumentManager.Instance.CurrentDBDocument\r\n\r\nwalls = FilteredElementCollector(document).OfClass(WallType).ToElements()\r\n\r\nwallDSType = [wall for wall in walls]\r\nOUT = wallDSType\r\n",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "f3ece47a27a043c1b93e8a3c08b35ab9",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "fbdd2341130243ce83c0d238aa20a1ee",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndef getRequiredWallType(wallTypes) :\r\n    \r\n    for wallType in wallTypes :\r\n        \r\n        wallTypeName = wallType.Name \r\n        \r\n        if \"Generic\" in wallTypeName :\r\n            \r\n            return UnwrapElement(wallType)\r\n    \r\n    return None\r\n    \r\ndef duplicateWalls(document, thickness, wallTypeRequired) :\r\n    \r\n    duplicatedWallTypes = []\r\n    \r\n    TransactionManager.Instance.EnsureInTransaction(document)\r\n    \r\n    for width in thickness :\r\n        \r\n        width =  UnitUtils.ConvertToInternalUnits(width, UnitTypeId.Feet)\r\n\r\n        newWallType = wallTypeRequired.Duplicate(\"Basic Wall \" + str(width))\r\n\r\n        compoundStructure = wallTypeRequired.GetCompoundStructure()\r\n        coreLayer = compoundStructure.GetFirstCoreLayerIndex()\r\n\r\n        compoundStructure.SetLayerWidth(coreLayer, width)\r\n        \r\n        newWallType.SetCompoundStructure(compoundStructure)\r\n        \r\n        duplicatedWallTypes.append(newWallType)\r\n\r\n    TransactionManager.Instance.TransactionTaskDone()\r\n    \r\n    return duplicatedWallTypes\r\n\r\ndocument = DocumentManager.Instance.CurrentDBDocument\r\n\r\nwallTypes        = IN[0]\r\ndeserializedData = IN[1]\r\n\r\ntotalThickness = deserializedData[0]\r\nunconnectedHeights = deserializedData[1]\r\nlocationCurves = deserializedData[2]\r\nthickness = deserializedData[3]\r\n\r\nwallTypeRequired = getRequiredWallType(wallTypes)\r\n\r\nOUT = duplicateWalls(document, thickness, wallTypeRequired), thickness, totalThickness, unconnectedHeights, locationCurves\r\n\r\n",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "82334852b0cf4407a02a407fb354919d",
+      "Inputs": [
+        {
+          "Id": "66f2b3399d7f431080e879ab0e755e19",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "f77e5cf4a1f2409a8fcbc0d0e387c6df",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "77f1529e215549188a7651aaf1b16d46",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import json\r\nimport clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\n\r\ndef processLocationCurves(start, end) :\r\n\r\n    startXYZ = XYZ(float(start[\"X\"]), float(start[\"Y\"]), float(start[\"Z\"]))\r\n    endXYZ   = XYZ(float(end[\"X\"]), float(end[\"Y\"]), float(end[\"Z\"]))\r\n    \r\n    line     = Line.CreateBound(startXYZ, endXYZ)\r\n\r\n    return line\r\n\r\nfile_path = \"C:\\\\Users\\\\Public\\\\Documents\\\\WallData.json\"\r\n\r\nwith open(file_path, 'r') as file:\r\n    data = json.load(file)\r\n    \r\n\r\ntotalThickness = []\r\nunconnectedHeights = []\r\nlocationCurves = []\r\n\r\nfor item in data :\r\n    \r\n    thickness = float(item[\"Thickness\"])\r\n    totalThickness.append(round(thickness, 1))\r\n    \r\n    start     = item[\"Start\"]\r\n    end       = item[\"End\"]\r\n    \r\n    locationCurve = processLocationCurves(start, end)\r\n    locationCurves.append(locationCurve)\r\n    \r\n    height    = item[\"Height\"]\r\n    unconnectedHeights.append(float(height))\r\n    \r\nOUT = totalThickness, unconnectedHeights, locationCurves, list(set(totalThickness))",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "0706dca549a84fd6b4934c709bdd618c",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "f1ba84a966db4e7c9b99bce5b34135b8",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\nfrom Autodesk.Revit.DB.Structure import *\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\ndef createWalls(document, wallTypes, thickness, totalThickness, unconnectedHeights, locationCurves, level) :\r\n\r\n    walls = []\r\n    \r\n    TransactionManager.Instance.EnsureInTransaction(document)\r\n    \r\n    for iterator in range(len(totalThickness)) :\r\n        \r\n        height = unconnectedHeights[iterator]\r\n        height = UnitUtils.ConvertToInternalUnits(height, UnitTypeId.Feet)\r\n        \r\n        locationCurve = locationCurves[iterator]\r\n        \r\n        width = totalThickness[iterator]\r\n        requiredIndex = thickness.index(width)\r\n        \r\n        wallType = UnwrapElement(wallTypes[requiredIndex])\r\n        \r\n        wall = Wall.Create(document, locationCurve, wallType.Id, level.Id, height, 0.0, False, False)\r\n        # parameter = wall.LookupParameter(\"Unconnected Height\")\r\n        \r\n        walls.append(wall)\r\n\r\n    TransactionManager.Instance.TransactionTaskDone()\r\n        \r\nwallData = IN[0]\r\n\r\nwallTypes = wallData[0]\r\nthickness = wallData[1]\r\ntotalThickness = wallData[2]\r\nunconnectedHeights = wallData[3]\r\nlocationCurves = wallData[4]\r\n\r\ndocument = DocumentManager.Instance.CurrentDBDocument\r\nlevel = FilteredElementCollector(document).OfClass(Level).FirstElement()\r\n\r\nOUT = createWalls(document, wallTypes, thickness, totalThickness, unconnectedHeights, locationCurves, level)",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "92d4d1af461b48969bc23b9881dd04fe",
+      "Inputs": [
+        {
+          "Id": "e1c2ad3b8d7343d99874609882177452",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "3be461af946746ab9772cacc853b3770",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "fbdd2341130243ce83c0d238aa20a1ee",
+      "End": "66f2b3399d7f431080e879ab0e755e19",
+      "Id": "84e8151be20f4d3489b22f5bf9488b75",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "77f1529e215549188a7651aaf1b16d46",
+      "End": "e1c2ad3b8d7343d99874609882177452",
+      "Id": "5192997a56f24019830f85fe86e6952a",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "f1ba84a966db4e7c9b99bce5b34135b8",
+      "End": "f77e5cf4a1f2409a8fcbc0d0e387c6df",
+      "Id": "ae2d100f5aea4eaaaf21e81b6a444712",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "3be461af946746ab9772cacc853b3770",
+      "End": "a60df231c55248f984375b8a7d5ab082",
+      "Id": "eba948bcb8a446ce9217e57af37feb22",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "2.13",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "2.0",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "Join Geometry",
+        "ShowGeometry": true,
+        "Id": "ac949aaaa61c4caeac2591ddec3f9f99",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": true,
+        "X": 1472.7953660306714,
+        "Y": -720.59170673130109
+      },
+      {
+        "Name": "Get Wall Type",
+        "ShowGeometry": true,
+        "Id": "f3ece47a27a043c1b93e8a3c08b35ab9",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 212.73354995032383,
+        "Y": -809.08028511159159
+      },
+      {
+        "Name": "Create Duplicate",
+        "ShowGeometry": true,
+        "Id": "82334852b0cf4407a02a407fb354919d",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 867.899965005729,
+        "Y": -716.16814297420569
+      },
+      {
+        "Name": "Python Script",
+        "ShowGeometry": true,
+        "Id": "0706dca549a84fd6b4934c709bdd618c",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 437.36759224496973,
+        "Y": -617.48629588369442
+      },
+      {
+        "Name": "Create Walls",
+        "ShowGeometry": true,
+        "Id": "92d4d1af461b48969bc23b9881dd04fe",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 1156.1449375644013,
+        "Y": -716.3634436407109
+      }
+    ],
+    "Annotations": [],
+    "X": -63.796244634068557,
+    "Y": 417.88565568216444,
+    "Zoom": 0.35283772257325496
+  }
+}
