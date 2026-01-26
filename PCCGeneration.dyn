@@ -1,0 +1,255 @@
+{
+  "Uuid": "c878b4cb-eb5b-4280-b7ff-e6bfbf9bf516",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "PCCGeneration",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [
+    {
+      "Id": "4dd1e2cbde57448990e2de4df4612886",
+      "Name": "Floor Types",
+      "Type": "dropdownSelection",
+      "Value": "150mm Foundation Slab",
+      "Description": "All floor types available in the document.",
+      "SelectedIndex": 0
+    },
+    {
+      "Id": "84e5b3b7c80a41e4858b06b417c140e0",
+      "Name": "Parameter Name",
+      "Type": "string",
+      "Value": "Height Offset From Level",
+      "Description": "Creates a string.",
+      "SelectedIndex": 0
+    }
+  ],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "DSRevitNodesUI.ElementsInView, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "Id": "4f8c20e8e6a14a9e85fe3a02eabbdf4c",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c724ee9070b04c97ba00074fca5006bb",
+          "Name": "elements",
+          "Description": "All visible elements in the active view.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Get all the elements which are visible in the active view."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import traceback\r\n\r\nimport System\r\nfrom System.Collections.Generic import List\r\n\r\nimport clr\r\nclr.AddReference('ProtoGeometry')\r\nfrom Autodesk.DesignScript.Geometry import *\r\n\r\nclr.AddReference('RevitAPI')\r\nfrom Autodesk.Revit.DB import *\r\n\r\nclr.AddReference(\"RevitNodes\")\r\nimport Revit\r\nclr.ImportExtensions(Revit.Elements)\r\nclr.ImportExtensions(Revit.GeometryConversion)\r\n\r\nclr.AddReference('RevitServices')\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\nclass CreatePCC :\r\n\r\n\t__listOfCurves = None\r\n\t__floorTypeId = None\r\n\t__levelId = None\r\n\t__document = None\r\n\t\r\n\tdef __init__(self, curves, floorType, level, document) :\r\n\t\t\r\n\t\tself.__listOfCurves = self.filterEmptyList(curves)\r\n\t\tself.__floorTypeId = floorType.Id\r\n\t\tself.__levelId = level.Id\r\n\t\tself.__document = document\r\n\t\t\r\n\tdef filterEmptyList(self, curves) :\r\n\t\t\r\n\t\tcurveLoops = CurveLoop()\r\n\r\n\t\tfor iterator in range(len(curves)) :\r\n\r\n\t\t\tcurveLoops.Append(curves[iterator]) #  .ToRevitType()\r\n\t\t\t\r\n\t\treturn curveLoops\r\n\t\t\r\n\tdef createPCC(self) :\r\n\t\t\r\n\t\r\n\t\tcurveLoops = List[CurveLoop]()\r\n\t\tcurveLoops.Add(self.__listOfCurves)\r\n\r\n\t\tTransactionManager.Instance.EnsureInTransaction(document)\r\n\t\t\r\n\t\tfloor = Floor.Create(self.__document, curveLoops, ElementId(self.__floorTypeId), self.__levelId)\r\n\t\t\r\n\t\tTransactionManager.Instance.TransactionTaskDone()\r\n\t\t\r\n\t\treturn floor\r\n\t\t\r\n\r\ndef getLevel(element) :\r\n\t\r\n\tif hasattr(element, \"LevelId\") : return element.Document.GetElement(element.LevelId)\r\n\telif hasattr(element, \"Level\") : return element.Level\r\n\r\ndef getBuiltInCategory(categoryId) :\r\n\t\r\n\treturn System.Enum.ToObject(BuiltInCategory, categoryId.IntegerValue)\r\n\r\ndef getSolids(element) : return element.Geometry()\r\n\r\ndef getAllSurface(solids) :\r\n\t\r\n\tallSurfaces = []\r\n\t\r\n\tfor solid in solids :\r\n\t\t\r\n\t\tsurfaces = solid.Explode()\r\n\t\tallSurfaces.extend(surfaces)\r\n\t\t\r\n\treturn allSurfaces\r\n\r\ndef getRequiredFace(surfaces) :\r\n\t\r\n\tpointSurfaceDictionary = {}\r\n\tfor surface in surfaces :\r\n\t\t\r\n\t\tpoint = surface.PointAtParameter(0.5,0.5)\r\n\t\tz = point.Z\r\n\t\tpointSurfaceDictionary[z] = surface\r\n\r\n\tminimum = min(pointSurfaceDictionary)\r\n\t\r\n\treturn pointSurfaceDictionary[minimum], minimum\r\n\t\r\ndef toRevitType(curves) :\r\n\trevitCurves = []\r\n\t\r\n\tfor curve in curves :\r\n\t\t\r\n\t\trevitCurves.append(curve.ToRevitType())\r\n\t\r\n\treturn revitCurves\r\n\t\t\r\n\r\ndef getRequiredBoundryCurves(element) :\r\n\t\r\n\tsolids = getSolids(element)\r\n\r\n\tif solids :\r\n\r\n\t\tsurfaces = getAllSurface(solids)\r\n\r\n\t\trequiredFace, z = getRequiredFace(surfaces)\r\n\t\r\n\t\tperimeterCurves = requiredFace.PerimeterCurves()\r\n\t\r\n\t\trevitCurves = toRevitType(perimeterCurves)\r\n\r\n\t\treturn revitCurves, z\r\n\t\r\n\treturn None, None\r\n\r\ndef setParameter(element, parameterName, value) :\r\n\t\r\n\ttry :\r\n\r\n\t\telement.SetParameterByName(parameterName, value)\r\n\t\treturn \"Success\"\r\n\r\n\texcept : return traceback.format_exc()\r\n\r\nallElements = IN[0]\r\nfloorType = IN[1]\r\nheightParameterName = IN[2]\r\n\r\nOUT = []\r\n\r\nrevitElements = UnwrapElement(allElements)\r\ndocument = DocumentManager.Instance.CurrentDBDocument\r\n\r\n\r\nfor iterator in range(len(revitElements)) :\r\n\t\r\n\trevitElement = revitElements[iterator]\r\n\tprotoElement = allElements[iterator]\r\n\t\r\n\tif hasattr(revitElement, \"Category\") :\r\n\t\t\r\n\t\tcategory = revitElement.Category \r\n\t\t\r\n\t\tif category :\r\n\t\t\t\r\n\t\t\tcategoryId = category.Id\r\n\t\t\t\r\n\t\t\tbuiltInCategory = getBuiltInCategory(categoryId)\r\n\t\t\t\r\n\t\t\tif builtInCategory == BuiltInCategory.OST_StructuralFoundation :\r\n\t\t\t\t\r\n\t\t\t\tlevel = getLevel(revitElement)\r\n\t\t\t\t\r\n\t\t\t\tif level :\r\n\t\t\t\t\t\r\n\t\t\t\t\televation = level.ToDSType(True).Elevation\r\n\t\t\t\t\t\r\n\t\t\t\t\tobjectType = revitElement.GetType().ToString()\r\n\t\t\t\t\t\r\n\t\t\t\t\t\r\n\t\t\t\t\trevitCurves, z = getRequiredBoundryCurves(protoElement)\r\n\t\t\t\t\t\r\n\t\t\t\t\tif revitCurves :\r\n\t\t\t\t\t\r\n\t\t\t\t\t\tcreatePCC = CreatePCC(revitCurves, floorType, level, document)\r\n\t\t\t\t\t\tpcc = createPCC.createPCC()\r\n\t\t\t\t\t\tprotoPCC = pcc.ToDSType(True)\r\n\r\n\t\t\t\t\t\tvalue = z - elevation\r\n\r\n\t\t\t\t\t\ttask = setParameter(protoPCC, heightParameterName, value)\r\n\t\t\t\t\t\tOUT.append([task, protoElement])\r\n\t\t\t\t\t\t\r\n\t\t\t\t\telse : \r\n\t\t\t\t\t\t\r\n\t\t\t\t\t\tOUT.append([\"Unidentified Element\", protoElement])\r\n\t\t\t\t\r\n\r\n",
+      "Engine": "IronPython2",
+      "VariableInputPorts": true,
+      "Id": "c54023852d5846f583ece1beff0eb7ba",
+      "Inputs": [
+        {
+          "Id": "5b2e1913ba434642b73d2f0381827d03",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "bce094943b8b4062ab7351adebdb58cd",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "43812742e9964754ac0a7e1fc5d3026c",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "bd06765361b74af0bade6525d32322eb",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded Python script."
+    },
+    {
+      "ConcreteType": "DSRevitNodesUI.FloorTypes, DSRevitNodesUI",
+      "SelectedIndex": 0,
+      "SelectedString": "150mm Foundation Slab",
+      "NodeType": "ExtensionNode",
+      "Id": "4dd1e2cbde57448990e2de4df4612886",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "7a8c1246710343fb8d7435cc2d8fd9fe",
+          "Name": "Floor Type",
+          "Description": "The selected Floor Type",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "All floor types available in the document."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "Height Offset From Level",
+      "Id": "84e5b3b7c80a41e4858b06b417c140e0",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "013be03f0f3444b1bb8918754250ddd1",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "c724ee9070b04c97ba00074fca5006bb",
+      "End": "5b2e1913ba434642b73d2f0381827d03",
+      "Id": "250ef61b235c471bb38dd00a2ed4d017",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "7a8c1246710343fb8d7435cc2d8fd9fe",
+      "End": "bce094943b8b4062ab7351adebdb58cd",
+      "Id": "7c244b0e07ca44c2bc04f44a1ae0a4dd",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "013be03f0f3444b1bb8918754250ddd1",
+      "End": "43812742e9964754ac0a7e1fc5d3026c",
+      "Id": "7a218009be824fd8aa6f33f38d9a509f",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [
+    {
+      "ExtensionGuid": "28992e1d-abb9-417f-8b1b-05e053bee670",
+      "Name": "Properties",
+      "Version": "2.13",
+      "Data": {}
+    },
+    {
+      "ExtensionGuid": "DFBD9CC0-DB40-457A-939E-8C8555555A9D",
+      "Name": "Generative Design",
+      "Version": "2.0",
+      "Data": {}
+    }
+  ],
+  "Author": "",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.13.1.3887",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Name": "All Elements In Active View",
+        "ShowGeometry": true,
+        "Id": "4f8c20e8e6a14a9e85fe3a02eabbdf4c",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 211.76928356999616,
+        "Y": 296.87399714414164
+      },
+      {
+        "Name": "Python Script",
+        "ShowGeometry": true,
+        "Id": "c54023852d5846f583ece1beff0eb7ba",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 650.90779181918242,
+        "Y": 407.98695012304347
+      },
+      {
+        "Name": "Floor Types",
+        "ShowGeometry": true,
+        "Id": "4dd1e2cbde57448990e2de4df4612886",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 83.961965660932776,
+        "Y": 455.45255790200338
+      },
+      {
+        "Name": "Parameter Name",
+        "ShowGeometry": true,
+        "Id": "84e5b3b7c80a41e4858b06b417c140e0",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 274.8250386911435,
+        "Y": 595.68369255549624
+      }
+    ],
+    "Annotations": [],
+    "X": -338.770101798272,
+    "Y": -150.49199072392202,
+    "Zoom": 0.67615289535715373
+  }
+}
